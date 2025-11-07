@@ -1,5 +1,5 @@
 {
-  "name": "IT Expense Dashboard",
+  "name": "IT Support Budget",
   "description": "A comprehensive web application for IT Support Managers to plan, budget, and track IT expenses over a 3-year period. It features a dashboard for visualizing planned vs. actual spending, detailed expense categories, and data visualization tools.",
   "requestFramePermissions": []
 }
