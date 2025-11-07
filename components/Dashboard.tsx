@@ -1,14 +1,13 @@
-
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import SummaryCard from './SummaryCard';
 import BudgetCard from './BudgetCard';
-import ExpenseBreakdownChart from './ExpenseBreakdownChart';
 import SpendingTrendChart from './SpendingTrendChart';
 import RecentTransactions from './RecentTransactions';
 import AddTransactionModal from './AddTransactionModal';
 import PlannedExpenses from './PlannedExpenses';
-import { PLANNED_BUDGET, TOTAL_BUDGET } from '../constants';
-import { Category, Transaction } from '../types';
+import BudgetPlanner from './BudgetPlanner';
+import BudgetPlannerModal from './BudgetPlannerModal';
+import { Category, Transaction, YearlyBudget, TransactionStatus } from '../types';
 
 // SVG Icons for cards
 const ComputerIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -35,24 +34,43 @@ interface DashboardProps {
     onUpdate: (updatedTransaction: Transaction) => void;
     onDelete: (transactionId: string) => void;
     onMarkAsPaid: (transactionId: string) => void;
+    yearlyBudget: YearlyBudget;
+    onUpdateYearlyBudget: (newBudget: YearlyBudget) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions, onAdd, onUpdate, onDelete, onMarkAsPaid }) => {
-    const [isModalOpen, setIsModalOpen] = useState(false);
+const Dashboard: React.FC<DashboardProps> = ({ transactions, onAdd, onUpdate, onDelete, onMarkAsPaid, yearlyBudget, onUpdateYearlyBudget }) => {
+    const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+    const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+
+    const budgetYears = useMemo(() => {
+        const years = new Set<number>();
+        Object.values(yearlyBudget).forEach(catBudget => {
+            Object.keys(catBudget).forEach(year => years.add(Number(year)));
+        });
+        return Array.from(years).sort((a, b) => a - b);
+    }, [yearlyBudget]);
+
+    const [selectedYear, setSelectedYear] = useState<number>(budgetYears[budgetYears.length-1] || new Date().getFullYear());
+
+    useEffect(() => {
+        if (budgetYears.length > 0 && !budgetYears.includes(selectedYear)) {
+            setSelectedYear(budgetYears[budgetYears.length-1]);
+        }
+    }, [budgetYears, selectedYear]);
 
     const handleOpenEditModal = (transaction: Transaction) => {
         setEditingTransaction(transaction);
-        setIsModalOpen(true);
+        setIsTransactionModalOpen(true);
     };
 
     const handleOpenAddModal = () => {
         setEditingTransaction(null);
-        setIsModalOpen(true);
+        setIsTransactionModalOpen(true);
     };
 
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
+    const handleCloseTransactionModal = () => {
+        setIsTransactionModalOpen(false);
         setEditingTransaction(null);
     };
 
@@ -63,56 +81,121 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onAdd, onUpdate, on
             onAdd(transactionData);
         }
     };
+
+    const transactionsForSelectedYear = useMemo(() => {
+        return transactions.filter(tx => new Date(tx.date).getFullYear() === selectedYear);
+    }, [transactions, selectedYear]);
     
-    const totalSpentForFiltered = transactions
-        .filter(tx => tx.status === 'Paid')
+    const totalSpentForSelectedYear = transactionsForSelectedYear
+        .filter(tx => tx.status === TransactionStatus.Paid)
         .reduce((sum, tx) => sum + tx.amount, 0);
     
-    const computerSpend = transactions
-        .filter(tx => tx.category === Category.Computers)
+    const computerSpend = transactionsForSelectedYear
+        .filter(tx => tx.category === Category.Computers && tx.status === TransactionStatus.Paid)
         .reduce((sum, tx) => sum + tx.amount, 0);
 
-    const printerSpend = transactions
-        .filter(tx => tx.category === Category.Printers)
+    const printerSpend = transactionsForSelectedYear
+        .filter(tx => tx.category === Category.Printers && tx.status === TransactionStatus.Paid)
         .reduce((sum, tx) => sum + tx.amount, 0);
 
-    const softwareSpend = transactions
-        .filter(tx => tx.category === Category.Software)
+    const softwareSpend = transactionsForSelectedYear
+        .filter(tx => tx.category === Category.Software && tx.status === TransactionStatus.Paid)
         .reduce((sum, tx) => sum + tx.amount, 0);
+
+    const computerTotalPlanned = yearlyBudget[Category.Computers][selectedYear] || 0;
+    const printerTotalPlanned = yearlyBudget[Category.Printers][selectedYear] || 0;
+    const softwareTotalPlanned = yearlyBudget[Category.Software][selectedYear] || 0;
+    const totalBudgetForSelectedYear = computerTotalPlanned + printerTotalPlanned + softwareTotalPlanned;
+
+    const { quarterlyPlannedSpend, trendChartLabels, startYear } = useMemo(() => {
+        if (budgetYears.length === 0) return { quarterlyPlannedSpend: [], trendChartLabels: [], startYear: new Date().getFullYear() };
+        
+        const firstYear = budgetYears[0];
+        const lastYear = budgetYears[budgetYears.length - 1];
+        const numYears = lastYear - firstYear + 1;
+        const quarterlySpend: number[] = Array(numYears * 4).fill(0);
+        const labels: string[] = [];
+
+        for (let year = firstYear; year <= lastYear; year++) {
+            const yearlyComputer = yearlyBudget[Category.Computers][year] || 0;
+            const yearlyPrinter = yearlyBudget[Category.Printers][year] || 0;
+            const yearlySoftware = yearlyBudget[Category.Software][year] || 0;
+            const quarterlyTotal = (yearlyComputer + yearlyPrinter + yearlySoftware) / 4;
+            
+            for (let quarter = 0; quarter < 4; quarter++) {
+                const overallIndex = (year - firstYear) * 4 + quarter;
+                quarterlySpend[overallIndex] = quarterlyTotal;
+                if (quarter === 0) {
+                    labels.push(`${year} Q1`);
+                } else {
+                    labels.push(`Q${quarter + 1}`);
+                }
+            }
+        }
+        return { quarterlyPlannedSpend: quarterlySpend, trendChartLabels: labels, startYear: firstYear };
+    }, [yearlyBudget, budgetYears]);
+
 
     return (
         <div>
-            <h1 className="text-2xl font-bold text-brand-text-dark mb-6">Financial Overview</h1>
+            <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+                <h1 className="text-2xl font-bold text-brand-text-dark">Financial Overview</h1>
+                {budgetYears.length > 0 && (
+                    <div className="flex items-center space-x-2">
+                        <label htmlFor="year-filter" className="text-sm font-medium text-gray-700">View Year:</label>
+                        <select
+                            id="year-filter"
+                            value={selectedYear}
+                            onChange={(e) => setSelectedYear(Number(e.target.value))}
+                            className="bg-white text-sm rounded-md border-gray-300 shadow-sm focus:ring-brand-light-blue focus:border-brand-light-blue px-3 py-1.5"
+                            aria-label="Select year to view"
+                        >
+                            {budgetYears.map(year => <option key={year} value={year}>{year}</option>)}
+                        </select>
+                    </div>
+                )}
+            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                 <SummaryCard 
                     title="Computers" 
                     value={computerSpend} 
                     icon={<ComputerIcon className="w-8 h-8 text-brand-light-blue" />}
-                    totalPlanned={PLANNED_BUDGET[Category.Computers]}
+                    totalPlanned={computerTotalPlanned}
                 />
                 <SummaryCard 
                     title="Printers" 
                     value={printerSpend}
                     icon={<PrinterIcon className="w-8 h-8 text-brand-light-blue" />}
-                    totalPlanned={PLANNED_BUDGET[Category.Printers]}
+                    totalPlanned={printerTotalPlanned}
                 />
                 <SummaryCard 
                     title="Software" 
                     value={softwareSpend}
                     icon={<SoftwareIcon className="w-8 h-8 text-brand-light-blue" />}
-                    totalPlanned={PLANNED_BUDGET[Category.Software]}
+                    totalPlanned={softwareTotalPlanned}
                 />
                 <BudgetCard 
-                    totalBudget={TOTAL_BUDGET} 
-                    totalSpent={totalSpentForFiltered} 
+                    totalBudget={totalBudgetForSelectedYear} 
+                    totalSpent={totalSpentForSelectedYear} 
+                    selectedYear={selectedYear}
                 />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <ExpenseBreakdownChart transactions={transactions} />
-                <SpendingTrendChart transactions={transactions} />
+            <div className="grid grid-cols-1 gap-6 mb-6">
+                <SpendingTrendChart 
+                    transactions={transactions} 
+                    quarterlyPlannedSpend={quarterlyPlannedSpend} 
+                    labels={trendChartLabels}
+                    startYear={startYear}
+                />
             </div>
+
+            <BudgetPlanner 
+              yearlyBudget={yearlyBudget} 
+              selectedYear={selectedYear} 
+              onOpenModal={() => setIsBudgetModalOpen(true)} 
+            />
 
             <RecentTransactions 
                 transactions={transactions} 
@@ -129,10 +212,16 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onAdd, onUpdate, on
             />
 
             <AddTransactionModal
-                isOpen={isModalOpen}
-                onClose={handleCloseModal}
+                isOpen={isTransactionModalOpen}
+                onClose={handleCloseTransactionModal}
                 onSave={handleSaveTransaction}
                 transactionToEdit={editingTransaction}
+            />
+            <BudgetPlannerModal 
+                isOpen={isBudgetModalOpen}
+                onClose={() => setIsBudgetModalOpen(false)}
+                onSave={onUpdateYearlyBudget}
+                currentBudget={yearlyBudget}
             />
         </div>
     );

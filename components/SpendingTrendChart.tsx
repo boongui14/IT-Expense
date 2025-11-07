@@ -1,45 +1,47 @@
-
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Transaction } from '../types';
-import { QUARTERLY_PLANNED_SPEND, QUARTER_NAMES } from '../constants';
 
 interface SpendingTrendChartProps {
     transactions: Transaction[];
+    quarterlyPlannedSpend: number[];
+    labels: string[];
+    startYear: number;
 }
 
-const SpendingTrendChart: React.FC<SpendingTrendChartProps> = ({ transactions }) => {
+const SpendingTrendChart: React.FC<SpendingTrendChartProps> = ({ transactions, quarterlyPlannedSpend, labels, startYear }) => {
     const chartData = React.useMemo(() => {
-        const actualsByQuarter: number[] = Array(12).fill(0);
+        const numQuarters = labels.length;
+        const actualsByQuarter: number[] = Array(numQuarters).fill(0);
         
         transactions.forEach(tx => {
+            if(tx.status !== 'Paid') return;
             const date = new Date(tx.date);
-            // Assuming Year 1 starts in 2023 for mock data
-            const yearIndex = date.getFullYear() - 2023;
+            const yearIndex = date.getFullYear() - startYear;
             const quarterIndex = Math.floor(date.getMonth() / 3);
             const overallIndex = yearIndex * 4 + quarterIndex;
 
-            if (overallIndex >= 0 && overallIndex < 12) {
+            if (overallIndex >= 0 && overallIndex < numQuarters) {
                 actualsByQuarter[overallIndex] += tx.amount;
             }
         });
 
-        return QUARTER_NAMES.map((name, index) => ({
+        return labels.map((name, index) => ({
             name,
-            "Planned Budget": QUARTERLY_PLANNED_SPEND[index],
+            "Planned Budget": quarterlyPlannedSpend[index],
             "Actual Spend": actualsByQuarter[index],
         }));
 
-    }, [transactions]);
+    }, [transactions, quarterlyPlannedSpend, labels, startYear]);
 
     const yAxisFormatter = (value: number) => {
-        if (value === 0) return '0%';
-        return `${(value / 100000).toFixed(0)}%`;
+        if (value === 0) return '$0';
+        return `$${(value / 1000).toFixed(0)}k`;
     }
 
     return (
         <div className="bg-brand-card-bg p-6 rounded-lg shadow-sm">
-            <h3 className="text-lg font-semibold text-brand-text-dark mb-4">Quarterly Spending Trend (Planned vs. Actual) - 3 Years</h3>
+            <h3 className="text-lg font-semibold text-brand-text-dark mb-4">Quarterly Spending Trend (Planned vs. Actual)</h3>
             <div style={{ width: '100%', height: 300 }}>
                 <ResponsiveContainer>
                     <LineChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>

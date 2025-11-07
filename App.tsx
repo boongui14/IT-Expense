@@ -2,8 +2,8 @@
 import React, { useState, useMemo } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
-import { Transaction, Category, TransactionStatus } from './types';
-import { MOCK_TRANSACTIONS } from './constants';
+import { Transaction, Category, TransactionStatus, YearlyBudget } from './types';
+import { MOCK_TRANSACTIONS, INITIAL_YEARLY_BUDGET } from './constants';
 
 export interface Filters {
   category: Category | 'All';
@@ -15,6 +15,7 @@ export interface Filters {
 
 const App: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>(MOCK_TRANSACTIONS);
+  const [yearlyBudget, setYearlyBudget] = useState<YearlyBudget>(INITIAL_YEARLY_BUDGET);
   const [filters, setFilters] = useState<Filters>({
     category: 'All',
     vendor: '',
@@ -83,6 +84,10 @@ const App: React.FC = () => {
     );
   };
 
+  const handleUpdateYearlyBudget = (newBudget: YearlyBudget) => {
+    setYearlyBudget(newBudget);
+  };
+
   return (
     <div className="min-h-screen bg-brand-bg font-sans">
       <Header filters={filters} onFilterChange={handleFilterChange} />
@@ -93,6 +98,8 @@ const App: React.FC = () => {
           onUpdate={handleUpdateTransaction}
           onDelete={handleDeleteTransaction}
           onMarkAsPaid={handleMarkAsPaid}
+          yearlyBudget={yearlyBudget}
+          onUpdateYearlyBudget={handleUpdateYearlyBudget}
         />
       </main>
     </div>

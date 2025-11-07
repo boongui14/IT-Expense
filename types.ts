@@ -1,4 +1,3 @@
-
 export enum Category {
   Computers = 'Computers',
   Printers = 'Printers',
@@ -18,4 +17,10 @@ export interface Transaction {
   vendor: string;
   amount: number;
   status: TransactionStatus;
+}
+
+export interface YearlyBudget {
+  [Category.Computers]: { [year: number]: number };
+  [Category.Printers]: { [year: number]: number };
+  [Category.Software]: { [year: number]: number };
 }
