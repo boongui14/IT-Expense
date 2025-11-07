@@ -193,7 +193,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onAdd, onUpdate, on
 
             <BudgetPlanner 
               yearlyBudget={yearlyBudget} 
-              selectedYear={selectedYear} 
               onOpenModal={() => setIsBudgetModalOpen(true)} 
             />
 

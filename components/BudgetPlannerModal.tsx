@@ -8,6 +8,13 @@ interface BudgetPlannerModalProps {
     currentBudget: YearlyBudget;
 }
 
+const TrashIcon: React.FC<{className?: string}> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+    </svg>
+);
+
+
 const BudgetPlannerModal: React.FC<BudgetPlannerModalProps> = ({ isOpen, onClose, onSave, currentBudget }) => {
     const [budgetData, setBudgetData] = useState<YearlyBudget>(currentBudget);
 
@@ -48,6 +55,22 @@ const BudgetPlannerModal: React.FC<BudgetPlannerModalProps> = ({ isOpen, onClose
         setBudgetData(newBudgetData);
     }
 
+    const handleDeleteYear = (yearToDelete: number) => {
+        if (!window.confirm(`Are you sure you want to delete all budget data for ${yearToDelete}? This action cannot be undone.`)) {
+            return;
+        }
+        
+        setBudgetData(currentBudgetData => {
+            const newBudgetData = JSON.parse(JSON.stringify(currentBudgetData));
+            for (const category of Object.values(Category)) {
+                if (newBudgetData[category] && newBudgetData[category][yearToDelete] !== undefined) {
+                    delete newBudgetData[category][yearToDelete];
+                }
+            }
+            return newBudgetData;
+        });
+    };
+
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
         onSave(budgetData);
@@ -80,7 +103,22 @@ const BudgetPlannerModal: React.FC<BudgetPlannerModalProps> = ({ isOpen, onClose
                              <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                                 <tr>
                                     <th className="px-4 py-3 sticky left-0 bg-gray-50 z-10">Category</th>
-                                    {budgetYears.map(year => <th key={year} className="px-4 py-3 text-right min-w-[150px]">{year}</th>)}
+                                    {budgetYears.map(year => (
+                                        <th key={year} className="px-4 py-3 text-right min-w-[150px]">
+                                            <div className="flex justify-end items-center gap-2">
+                                                <span>{year}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDeleteYear(year)}
+                                                    className="text-red-500 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    aria-label={`Delete year ${year}`}
+                                                    disabled={budgetYears.length <= 1}
+                                                >
+                                                    <TrashIcon className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        </th>
+                                    ))}
                                 </tr>
                              </thead>
                              <tbody className="bg-white">
