@@ -1,7 +1,6 @@
-export enum Category {
-  Computers = 'Computers',
-  Printers = 'Printers',
-  Software = 'Software',
+export interface Category {
+  id: string;
+  name: string;
 }
 
 export enum TransactionStatus {
@@ -12,15 +11,11 @@ export enum TransactionStatus {
 export interface Transaction {
   id: string;
   date: string; // YYYY-MM-DD
-  category: Category;
+  categoryId: string;
   subcategory: string;
   vendor: string;
   amount: number;
   status: TransactionStatus;
 }
 
-export interface YearlyBudget {
-  [Category.Computers]: { [year: number]: number };
-  [Category.Printers]: { [year: number]: number };
-  [Category.Software]: { [year: number]: number };
-}
+export type YearlyBudget = Record<string, { [year: number]: number }>;

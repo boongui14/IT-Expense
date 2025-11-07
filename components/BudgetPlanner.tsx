@@ -6,6 +6,7 @@ interface BudgetPlannerProps {
     yearlyBudget: YearlyBudget;
     onOpenModal: () => void;
     onDeleteYear: (year: number) => void;
+    categories: Category[];
 }
 
 const formatCurrency = (num: number) => {
@@ -23,7 +24,7 @@ const TrashIcon: React.FC<{className?: string}> = ({ className }) => (
     </svg>
 );
 
-const BudgetPlanner: React.FC<BudgetPlannerProps> = ({ yearlyBudget, onOpenModal, onDeleteYear }) => {
+const BudgetPlanner: React.FC<BudgetPlannerProps> = ({ yearlyBudget, onOpenModal, onDeleteYear, categories }) => {
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [yearToDelete, setYearToDelete] = useState<number | null>(null);
     
@@ -37,13 +38,11 @@ const BudgetPlanner: React.FC<BudgetPlannerProps> = ({ yearlyBudget, onOpenModal
         return Array.from(years).sort((a, b) => a - b);
     }, [yearlyBudget]);
 
-    const categories = Object.values(Category);
-
     const yearlyTotals = React.useMemo(() => {
         const totals: { [year: number]: number } = {};
         budgetYears.forEach(year => {
             totals[year] = categories.reduce((sum, category) => {
-                return sum + (yearlyBudget[category]?.[year] || 0);
+                return sum + (yearlyBudget[category.id]?.[year] || 0);
             }, 0);
         });
         return totals;
@@ -114,11 +113,11 @@ const BudgetPlanner: React.FC<BudgetPlannerProps> = ({ yearlyBudget, onOpenModal
                         </thead>
                         <tbody>
                             {categories.map(category => (
-                                <tr key={category} className="bg-white border-b hover:bg-gray-50">
-                                    <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{category}</td>
+                                <tr key={category.id} className="bg-white border-b hover:bg-gray-50">
+                                    <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{category.name}</td>
                                     {budgetYears.map(year => (
                                         <td key={year} className="px-6 py-4 text-right">
-                                            {formatCurrency(yearlyBudget[category]?.[year] || 0)}
+                                            {formatCurrency(yearlyBudget[category.id]?.[year] || 0)}
                                         </td>
                                     ))}
                                 </tr>

@@ -1,11 +1,12 @@
 import React from 'react';
-import { Transaction, TransactionStatus } from '../types';
+import { Transaction, TransactionStatus, Category } from '../types';
 
 interface RecentTransactionsProps {
     transactions: Transaction[];
     onEdit: (transaction: Transaction) => void;
     onDelete: (id: string) => void;
     onAdd: () => void;
+    categories: Category[];
 }
 
 const StatusBadge: React.FC<{ status: TransactionStatus }> = ({ status }) => {
@@ -17,7 +18,7 @@ const StatusBadge: React.FC<{ status: TransactionStatus }> = ({ status }) => {
 };
 
 
-const RecentTransactions: React.FC<RecentTransactionsProps> = ({ transactions, onEdit, onDelete, onAdd }) => {
+const RecentTransactions: React.FC<RecentTransactionsProps> = ({ transactions, onEdit, onDelete, onAdd, categories }) => {
     const sortedTransactions = [...transactions]
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .slice(0, 5);
@@ -65,34 +66,37 @@ const RecentTransactions: React.FC<RecentTransactionsProps> = ({ transactions, o
                         </tr>
                     </thead>
                     <tbody>
-                        {sortedTransactions.map((tx) => (
-                            <tr key={tx.id} className="bg-white border-b hover:bg-gray-50">
-                                <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{formatDate(tx.date)}</td>
-                                <td className="px-6 py-4">{tx.category}</td>
-                                <td className="px-6 py-4">{tx.subcategory}</td>
-                                <td className="px-6 py-4">{tx.vendor}</td>
-                                <td className="px-6 py-4 text-right">{formatCurrency(tx.amount)}</td>
-                                <td className="px-6 py-4 text-center">
-                                    <StatusBadge status={tx.status} />
-                                </td>
-                                <td className="px-6 py-4 text-center whitespace-nowrap">
-                                    <button
-                                        onClick={() => onEdit(tx)}
-                                        className="font-medium text-brand-accent hover:underline focus:outline-none"
-                                        aria-label={`Edit transaction ${tx.id}`}
-                                    >
-                                        Edit
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(tx.id)}
-                                        className="font-medium text-red-600 hover:underline ml-4 focus:outline-none"
-                                        aria-label={`Delete transaction ${tx.id}`}
-                                    >
-                                        Delete
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
+                        {sortedTransactions.map((tx) => {
+                            const categoryName = categories.find(c => c.id === tx.categoryId)?.name || tx.categoryId;
+                            return (
+                                <tr key={tx.id} className="bg-white border-b hover:bg-gray-50">
+                                    <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{formatDate(tx.date)}</td>
+                                    <td className="px-6 py-4">{categoryName}</td>
+                                    <td className="px-6 py-4">{tx.subcategory}</td>
+                                    <td className="px-6 py-4">{tx.vendor}</td>
+                                    <td className="px-6 py-4 text-right">{formatCurrency(tx.amount)}</td>
+                                    <td className="px-6 py-4 text-center">
+                                        <StatusBadge status={tx.status} />
+                                    </td>
+                                    <td className="px-6 py-4 text-center whitespace-nowrap">
+                                        <button
+                                            onClick={() => onEdit(tx)}
+                                            className="font-medium text-brand-accent hover:underline focus:outline-none"
+                                            aria-label={`Edit transaction ${tx.id}`}
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(tx.id)}
+                                            className="font-medium text-red-600 hover:underline ml-4 focus:outline-none"
+                                            aria-label={`Delete transaction ${tx.id}`}
+                                        >
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            )
+                        })}
                     </tbody>
                 </table>
             </div>

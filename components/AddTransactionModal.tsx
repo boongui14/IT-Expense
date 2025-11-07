@@ -6,19 +6,21 @@ interface AddTransactionModalProps {
     onClose: () => void;
     onSave: (transaction: Omit<Transaction, 'id'> & { id?: string }) => void;
     transactionToEdit?: Transaction | null;
+    categories: Category[];
 }
 
-const initialFormState: Omit<Transaction, 'id'> = {
-    date: new Date().toISOString().split('T')[0],
-    category: Category.Computers,
-    subcategory: '',
-    vendor: '',
-    amount: 0,
-    status: TransactionStatus.Planned,
-};
-
-const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClose, onSave, transactionToEdit }) => {
-    const [formData, setFormData] = useState<Omit<Transaction, 'id'> & { id?: string }>(initialFormState);
+const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClose, onSave, transactionToEdit, categories }) => {
+    
+    const getInitialFormState = (): Omit<Transaction, 'id'> => ({
+        date: new Date().toISOString().split('T')[0],
+        categoryId: categories.length > 0 ? categories[0].id : '',
+        subcategory: '',
+        vendor: '',
+        amount: 0,
+        status: TransactionStatus.Planned,
+    });
+    
+    const [formData, setFormData] = useState<Omit<Transaction, 'id'> & { id?: string }>(getInitialFormState());
     const isEditMode = !!transactionToEdit;
 
     useEffect(() => {
@@ -26,10 +28,10 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
             if (isEditMode && transactionToEdit) {
                 setFormData(transactionToEdit);
             } else {
-                setFormData(initialFormState);
+                setFormData(getInitialFormState());
             }
         }
-    }, [isOpen, transactionToEdit, isEditMode]);
+    }, [isOpen, transactionToEdit, isEditMode, categories]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -41,8 +43,8 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
-        if (!formData.subcategory.trim() || !formData.vendor.trim() || formData.amount <= 0) {
-            alert('Please fill out all fields correctly. Amount must be greater than zero.');
+        if (!formData.subcategory.trim() || !formData.vendor.trim() || formData.amount <= 0 || !formData.categoryId) {
+            alert('Please fill out all fields correctly. Amount must be greater than zero and a category must be selected.');
             return;
         }
         onSave({ ...formData, id: transactionToEdit?.id });
@@ -65,9 +67,9 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
                             <input type="date" name="date" id="date" value={formData.date} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-accent focus:border-brand-accent sm:text-sm" />
                         </div>
                         <div>
-                            <label htmlFor="category" className="block text-sm font-medium text-gray-700">Category</label>
-                            <select name="category" id="category" value={formData.category} onChange={handleChange} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-brand-accent focus:border-brand-accent sm:text-sm rounded-md">
-                                {Object.values(Category).map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                            <label htmlFor="categoryId" className="block text-sm font-medium text-gray-700">Category</label>
+                            <select name="categoryId" id="categoryId" value={formData.categoryId} onChange={handleChange} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-brand-accent focus:border-brand-accent sm:text-sm rounded-md">
+                                {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                             </select>
                         </div>
                         <div>

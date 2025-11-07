@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Category, TransactionStatus, Transaction } from '../types';
 import { Filters } from '../App';
@@ -13,6 +12,7 @@ interface HeaderProps {
     filters: Filters;
     onFilterChange: (newFilters: Partial<Filters>) => void;
     transactions: Transaction[];
+    categories: Category[];
 }
 
 const FilterInput: React.FC<{ children: React.ReactNode; label: string; htmlFor: string; }> = ({ children, label, htmlFor }) => (
@@ -22,7 +22,7 @@ const FilterInput: React.FC<{ children: React.ReactNode; label: string; htmlFor:
     </div>
 );
 
-const Header: React.FC<HeaderProps> = ({ filters, onFilterChange, transactions }) => {
+const Header: React.FC<HeaderProps> = ({ filters, onFilterChange, transactions, categories }) => {
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         onFilterChange({ [e.target.name]: e.target.value });
@@ -54,17 +54,18 @@ const Header: React.FC<HeaderProps> = ({ filters, onFilterChange, transactions }
             return str;
         };
 
-        const csvRows = transactions.map(tx => 
-            [
+        const csvRows = transactions.map(tx => {
+            const categoryName = categories.find(c => c.id === tx.categoryId)?.name || 'Unknown';
+            return [
                 tx.id,
                 tx.date,
-                tx.category,
+                categoryName,
                 escapeCSV(tx.subcategory),
                 escapeCSV(tx.vendor),
                 tx.amount,
                 tx.status
             ].join(',')
-        );
+        });
 
         const csvContent = [headers.join(','), ...csvRows].join('\n');
         
@@ -97,7 +98,7 @@ const Header: React.FC<HeaderProps> = ({ filters, onFilterChange, transactions }
                     <FilterInput label="Category" htmlFor="category">
                         <select id="category" name="category" value={filters.category} onChange={handleInputChange} className={inputClasses}>
                             <option value="All">All Categories</option>
-                            {Object.values(Category).map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                            {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                         </select>
                     </FilterInput>
 

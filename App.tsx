@@ -2,10 +2,10 @@ import React, { useState, useMemo } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import { Transaction, Category, TransactionStatus, YearlyBudget } from './types';
-import { MOCK_TRANSACTIONS, INITIAL_YEARLY_BUDGET } from './constants';
+import { MOCK_TRANSACTIONS, INITIAL_YEARLY_BUDGET, INITIAL_CATEGORIES } from './constants';
 
 export interface Filters {
-  category: Category | 'All';
+  category: string | 'All';
   vendor: string;
   status: TransactionStatus | 'All';
   startDate: string;
@@ -15,6 +15,7 @@ export interface Filters {
 const App: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>(MOCK_TRANSACTIONS);
   const [yearlyBudget, setYearlyBudget] = useState<YearlyBudget>(INITIAL_YEARLY_BUDGET);
+  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [filters, setFilters] = useState<Filters>({
     category: 'All',
     vendor: '',
@@ -43,7 +44,7 @@ const App: React.FC = () => {
         endDate.setHours(23, 59, 59, 999);
       }
 
-      const categoryMatch = filters.category === 'All' || tx.category === filters.category;
+      const categoryMatch = filters.category === 'All' || tx.categoryId === filters.category;
       const vendorMatch = !filters.vendor || tx.vendor.toLowerCase().includes(filters.vendor.toLowerCase());
       const statusMatch = filters.status === 'All' || tx.status === filters.status;
       const startDateMatch = !startDate || txDate >= startDate;
@@ -91,11 +92,48 @@ const App: React.FC = () => {
     setYearlyBudget(currentBudget => {
         const newBudget: YearlyBudget = JSON.parse(JSON.stringify(currentBudget)); // Deep copy
 
-        for (const category of Object.values(Category)) {
-            if (newBudget[category] && newBudget[category][yearToDelete] !== undefined) {
-                delete newBudget[category][yearToDelete];
+        for (const category of categories) {
+            if (newBudget[category.id] && newBudget[category.id][yearToDelete] !== undefined) {
+                delete newBudget[category.id][yearToDelete];
             }
         }
+        return newBudget;
+    });
+  };
+
+  const handleUpdateCategory = (updatedCategory: Category) => {
+    setCategories(currentCategories =>
+        currentCategories.map(c =>
+            c.id === updatedCategory.id ? updatedCategory : c
+        )
+    );
+  };
+
+  const handleAddCategory = (categoryName: string) => {
+    const newCategoryId = categoryName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
+    const newCategory: Category = {
+        id: newCategoryId,
+        name: categoryName,
+    };
+
+    setCategories(currentCategories => [...currentCategories, newCategory]);
+
+    setYearlyBudget(currentBudget => {
+        const newBudget = { ...currentBudget };
+        const years = new Set<number>();
+        // Get all unique years from the existing budget
+        Object.values(currentBudget).forEach(catBudget => {
+            if (catBudget) {
+              Object.keys(catBudget).forEach(year => years.add(Number(year)));
+            }
+        });
+
+        const budgetForNewCategory: { [year: number]: number } = {};
+        Array.from(years).forEach(year => {
+            budgetForNewCategory[year] = 0; // Initialize budget to 0 for all existing years
+        });
+        
+        newBudget[newCategoryId] = budgetForNewCategory;
         return newBudget;
     });
   };
@@ -106,6 +144,7 @@ const App: React.FC = () => {
         filters={filters} 
         onFilterChange={handleFilterChange} 
         transactions={filteredTransactions}
+        categories={categories}
       />
       <main className="p-4 sm:p-6 lg:p-8">
         <Dashboard 
@@ -117,6 +156,9 @@ const App: React.FC = () => {
           yearlyBudget={yearlyBudget}
           onUpdateYearlyBudget={handleUpdateYearlyBudget}
           onDeleteBudgetYear={handleDeleteBudgetYear}
+          categories={categories}
+          onUpdateCategory={handleUpdateCategory}
+          onAddCategory={handleAddCategory}
         />
       </main>
     </div>

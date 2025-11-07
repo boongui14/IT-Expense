@@ -36,9 +36,19 @@ interface DashboardProps {
     yearlyBudget: YearlyBudget;
     onUpdateYearlyBudget: (newBudget: YearlyBudget) => void;
     onDeleteBudgetYear: (year: number) => void;
+    categories: Category[];
+    onUpdateCategory: (category: Category) => void;
+    onAddCategory: (categoryName: string) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions, onAdd, onUpdate, onDelete, onMarkAsPaid, yearlyBudget, onUpdateYearlyBudget, onDeleteBudgetYear }) => {
+const categoryIcons: { [key: string]: React.ReactNode } = {
+    'computers': <ComputerIcon className="w-8 h-8 text-brand-light-blue" />,
+    'printers': <PrinterIcon className="w-8 h-8 text-brand-light-blue" />,
+    'software': <SoftwareIcon className="w-8 h-8 text-brand-light-blue" />,
+};
+const fallbackIcon = <SoftwareIcon className="w-8 h-8 text-brand-light-blue" />;
+
+const Dashboard: React.FC<DashboardProps> = ({ transactions, onAdd, onUpdate, onDelete, onMarkAsPaid, yearlyBudget, onUpdateYearlyBudget, onDeleteBudgetYear, categories, onUpdateCategory, onAddCategory }) => {
     const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
     const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -86,22 +96,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onAdd, onUpdate, on
         return transactions.filter(tx => new Date(tx.date).getFullYear() === selectedYear);
     }, [transactions, selectedYear]);
     
-    const computerSpend = transactionsForSelectedYear
-        .filter(tx => tx.category === Category.Computers && tx.status === TransactionStatus.Paid)
-        .reduce((sum, tx) => sum + tx.amount, 0);
-
-    const printerSpend = transactionsForSelectedYear
-        .filter(tx => tx.category === Category.Printers && tx.status === TransactionStatus.Paid)
-        .reduce((sum, tx) => sum + tx.amount, 0);
-
-    const softwareSpend = transactionsForSelectedYear
-        .filter(tx => tx.category === Category.Software && tx.status === TransactionStatus.Paid)
-        .reduce((sum, tx) => sum + tx.amount, 0);
-
-    const computerTotalPlanned = yearlyBudget[Category.Computers][selectedYear] || 0;
-    const printerTotalPlanned = yearlyBudget[Category.Printers][selectedYear] || 0;
-    const softwareTotalPlanned = yearlyBudget[Category.Software][selectedYear] || 0;
-
     const { quarterlyPlannedSpend, trendChartLabels, startYear } = useMemo(() => {
         const allYears = new Set<number>();
         Object.values(yearlyBudget).forEach(catBudget => {
@@ -124,10 +118,10 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onAdd, onUpdate, on
         const labels: string[] = [];
 
         for (let year = firstYear; year <= lastYear; year++) {
-            const yearlyComputer = yearlyBudget[Category.Computers][year] || 0;
-            const yearlyPrinter = yearlyBudget[Category.Printers][year] || 0;
-            const yearlySoftware = yearlyBudget[Category.Software][year] || 0;
-            const quarterlyTotal = (yearlyComputer + yearlyPrinter + yearlySoftware) / 4;
+            const yearlyTotal = categories.reduce((sum, category) => {
+                return sum + (yearlyBudget[category.id]?.[year] || 0);
+            }, 0);
+            const quarterlyTotal = yearlyTotal / 4;
             
             for (let quarter = 0; quarter < 4; quarter++) {
                 const overallIndex = (year - firstYear) * 4 + quarter;
@@ -140,7 +134,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onAdd, onUpdate, on
             }
         }
         return { quarterlyPlannedSpend: quarterlySpend, trendChartLabels: labels, startYear: firstYear };
-    }, [yearlyBudget, transactions]);
+    }, [yearlyBudget, transactions, categories]);
 
 
     return (
@@ -164,24 +158,22 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onAdd, onUpdate, on
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                <SummaryCard 
-                    title="Computers" 
-                    value={computerSpend} 
-                    icon={<ComputerIcon className="w-8 h-8 text-brand-light-blue" />}
-                    totalPlanned={computerTotalPlanned}
-                />
-                <SummaryCard 
-                    title="Printers" 
-                    value={printerSpend}
-                    icon={<PrinterIcon className="w-8 h-8 text-brand-light-blue" />}
-                    totalPlanned={printerTotalPlanned}
-                />
-                <SummaryCard 
-                    title="Software" 
-                    value={softwareSpend}
-                    icon={<SoftwareIcon className="w-8 h-8 text-brand-light-blue" />}
-                    totalPlanned={softwareTotalPlanned}
-                />
+                {categories.map(category => {
+                    const spend = transactionsForSelectedYear
+                        .filter(tx => tx.categoryId === category.id && tx.status === TransactionStatus.Paid)
+                        .reduce((sum, tx) => sum + tx.amount, 0);
+                    const totalPlanned = yearlyBudget[category.id]?.[selectedYear] || 0;
+                    
+                    return (
+                        <SummaryCard 
+                            key={category.id}
+                            title={category.name} 
+                            value={spend} 
+                            icon={categoryIcons[category.id] || fallbackIcon}
+                            totalPlanned={totalPlanned}
+                        />
+                    );
+                })}
             </div>
 
             <div className="grid grid-cols-1 gap-6 mb-6">
@@ -197,6 +189,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onAdd, onUpdate, on
               yearlyBudget={yearlyBudget} 
               onOpenModal={() => setIsBudgetModalOpen(true)}
               onDeleteYear={onDeleteBudgetYear}
+              categories={categories}
             />
 
             <RecentTransactions 
@@ -204,6 +197,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onAdd, onUpdate, on
                 onEdit={handleOpenEditModal}
                 onDelete={onDelete}
                 onAdd={handleOpenAddModal}
+                categories={categories}
             />
 
             <PlannedExpenses
@@ -211,6 +205,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onAdd, onUpdate, on
                 onEdit={handleOpenEditModal}
                 onDelete={onDelete}
                 onMarkAsPaid={onMarkAsPaid}
+                categories={categories}
             />
 
             <AddTransactionModal
@@ -218,12 +213,16 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onAdd, onUpdate, on
                 onClose={handleCloseTransactionModal}
                 onSave={handleSaveTransaction}
                 transactionToEdit={editingTransaction}
+                categories={categories}
             />
             <BudgetPlannerModal 
                 isOpen={isBudgetModalOpen}
                 onClose={() => setIsBudgetModalOpen(false)}
                 onSave={onUpdateYearlyBudget}
                 currentBudget={yearlyBudget}
+                categories={categories}
+                onUpdateCategory={onUpdateCategory}
+                onAddCategory={onAddCategory}
             />
         </div>
     );

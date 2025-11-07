@@ -7,6 +7,9 @@ interface BudgetPlannerModalProps {
     onClose: () => void;
     onSave: (newBudget: YearlyBudget) => void;
     currentBudget: YearlyBudget;
+    categories: Category[];
+    onUpdateCategory: (category: Category) => void;
+    onAddCategory: (categoryName: string) => void;
 }
 
 const TrashIcon: React.FC<{className?: string}> = ({ className }) => (
@@ -16,10 +19,12 @@ const TrashIcon: React.FC<{className?: string}> = ({ className }) => (
 );
 
 
-const BudgetPlannerModal: React.FC<BudgetPlannerModalProps> = ({ isOpen, onClose, onSave, currentBudget }) => {
+const BudgetPlannerModal: React.FC<BudgetPlannerModalProps> = ({ isOpen, onClose, onSave, currentBudget, categories, onUpdateCategory, onAddCategory }) => {
     const [budgetData, setBudgetData] = useState<YearlyBudget>(currentBudget);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [yearToDelete, setYearToDelete] = useState<number | null>(null);
+    const [editingCategory, setEditingCategory] = useState<{ id: string; name: string } | null>(null);
+    const [newCategoryName, setNewCategoryName] = useState('');
 
     const budgetYears = useMemo(() => {
         const years = new Set<number>();
@@ -33,14 +38,17 @@ const BudgetPlannerModal: React.FC<BudgetPlannerModalProps> = ({ isOpen, onClose
 
     useEffect(() => {
         if (isOpen) {
-            setBudgetData(JSON.parse(JSON.stringify(currentBudget))); // Deep copy
+            // Deep copy to avoid mutating parent state directly
+            setBudgetData(JSON.parse(JSON.stringify(currentBudget)));
+            setEditingCategory(null);
+            setNewCategoryName('');
         }
     }, [isOpen, currentBudget]);
 
-    const handleChange = (category: Category, year: number, value: string) => {
+    const handleChange = (categoryId: string, year: number, value: string) => {
         const newBudgetData = { ...budgetData };
-        newBudgetData[category] = { ...newBudgetData[category] };
-        newBudgetData[category][year] = parseFloat(value) || 0;
+        newBudgetData[categoryId] = { ...newBudgetData[categoryId] };
+        newBudgetData[categoryId][year] = parseFloat(value) || 0;
         setBudgetData(newBudgetData);
     };
 
@@ -51,9 +59,9 @@ const BudgetPlannerModal: React.FC<BudgetPlannerModalProps> = ({ isOpen, onClose
         if (budgetYears.includes(nextYear)) return; // Avoid duplicates
 
         const newBudgetData = JSON.parse(JSON.stringify(budgetData));
-        Object.values(Category).forEach(cat => {
-            if (!newBudgetData[cat]) newBudgetData[cat] = {};
-            newBudgetData[cat][nextYear] = 0;
+        categories.forEach(cat => {
+            if (!newBudgetData[cat.id]) newBudgetData[cat.id] = {};
+            newBudgetData[cat.id][nextYear] = 0;
         });
         setBudgetData(newBudgetData);
     }
@@ -67,10 +75,10 @@ const BudgetPlannerModal: React.FC<BudgetPlannerModalProps> = ({ isOpen, onClose
         if (yearToDelete === null) return;
         setBudgetData(current => {
             const newBudget = { ...current };
-            for (const category of Object.values(Category)) {
-                if (newBudget[category]?.[yearToDelete] !== undefined) {
-                    const { [yearToDelete]: _, ...remainingYears } = newBudget[category];
-                    newBudget[category] = remainingYears;
+            for (const category of categories) {
+                if (newBudget[category.id]?.[yearToDelete] !== undefined) {
+                    const { [yearToDelete]: _, ...remainingYears } = newBudget[category.id];
+                    newBudget[category.id] = remainingYears;
                 }
             }
             return newBudget;
@@ -79,6 +87,40 @@ const BudgetPlannerModal: React.FC<BudgetPlannerModalProps> = ({ isOpen, onClose
         setYearToDelete(null);
     }
 
+    const handleCategoryNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (editingCategory) {
+            setEditingCategory({ ...editingCategory, name: e.target.value });
+        }
+    };
+    
+    const handleSaveCategoryName = () => {
+        if (editingCategory && editingCategory.name.trim()) {
+            onUpdateCategory(editingCategory);
+        }
+        setEditingCategory(null);
+    };
+    
+    const handleCategoryKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleSaveCategoryName();
+        } else if (e.key === 'Escape') {
+            setEditingCategory(null);
+        }
+    };
+
+    const handleAddNewCategory = () => {
+        const trimmedName = newCategoryName.trim();
+        if (trimmedName) {
+            if (categories.some(c => c.name.toLowerCase() === trimmedName.toLowerCase())) {
+                alert('A category with this name already exists.');
+                return;
+            }
+            onAddCategory(trimmedName);
+            setNewCategoryName(''); // Clear input after adding
+        }
+    };
+
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
         onSave(budgetData);
@@ -86,8 +128,6 @@ const BudgetPlannerModal: React.FC<BudgetPlannerModalProps> = ({ isOpen, onClose
     };
 
     if (!isOpen) return null;
-
-    const categories = Object.values(Category);
 
     return (
         <>
@@ -106,7 +146,25 @@ const BudgetPlannerModal: React.FC<BudgetPlannerModalProps> = ({ isOpen, onClose
                         <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-3xl leading-none" aria-label="Close modal">&times;</button>
                     </div>
                     <form onSubmit={handleSubmit}>
-                        <div className="flex justify-end mb-4">
+                        <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
+                            <div className="flex items-center gap-2 flex-grow sm:flex-grow-0">
+                                <input
+                                    type="text"
+                                    value={newCategoryName}
+                                    onChange={(e) => setNewCategoryName(e.target.value)}
+                                    placeholder="New Category Name"
+                                    className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-accent focus:border-brand-accent sm:text-sm"
+                                    aria-label="New category name"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleAddNewCategory}
+                                    className="px-4 py-2 bg-brand-accent text-white text-sm font-medium rounded-md hover:bg-brand-light-blue disabled:bg-gray-400"
+                                    disabled={!newCategoryName.trim()}
+                                >
+                                    Add Category
+                                </button>
+                            </div>
                             <button
                                 type="button"
                                 onClick={handleAddYear}
@@ -140,20 +198,42 @@ const BudgetPlannerModal: React.FC<BudgetPlannerModalProps> = ({ isOpen, onClose
                                 </thead>
                                 <tbody className="bg-white">
                                     {categories.map(category => (
-                                        <tr key={category} className="border-b last:border-b-0">
-                                            <td className="px-4 py-2 font-medium sticky left-0 bg-white z-10">{category}</td>
+                                        <tr key={category.id} className="border-b last:border-b-0">
+                                            <td className="px-4 py-2 font-medium sticky left-0 bg-white z-10">
+                                                {editingCategory?.id === category.id ? (
+                                                    <input
+                                                        type="text"
+                                                        value={editingCategory.name}
+                                                        onChange={handleCategoryNameChange}
+                                                        onBlur={handleSaveCategoryName}
+                                                        onKeyDown={handleCategoryKeyDown}
+                                                        className="w-full px-2 py-1 border border-brand-accent rounded-md shadow-sm focus:outline-none focus:ring-brand-accent sm:text-sm"
+                                                        autoFocus
+                                                    />
+                                                ) : (
+                                                    <span
+                                                        onClick={() => setEditingCategory({ id: category.id, name: category.name })}
+                                                        className="cursor-pointer hover:bg-gray-100 p-1 rounded-md"
+                                                        role="button"
+                                                        tabIndex={0}
+                                                        onKeyDown={(e) => { if (e.key === 'Enter') setEditingCategory({ id: category.id, name: category.name })}}
+                                                    >
+                                                        {category.name}
+                                                    </span>
+                                                )}
+                                            </td>
                                             {budgetYears.map((year) => (
                                                 <td key={year} className="px-4 py-2">
                                                     <div className="relative">
                                                         <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">$</span>
                                                         <input
                                                             type="number"
-                                                            value={budgetData[category]?.[year] ?? 0}
-                                                            onChange={(e) => handleChange(category, year, e.target.value)}
+                                                            value={budgetData[category.id]?.[year] ?? 0}
+                                                            onChange={(e) => handleChange(category.id, year, e.target.value)}
                                                             className="w-full text-right pl-7 pr-2 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-accent focus:border-brand-accent"
                                                             min="0"
                                                             step="1000"
-                                                            aria-label={`${category} budget for year ${year}`}
+                                                            aria-label={`${category.name} budget for year ${year}`}
                                                         />
                                                     </div>
                                                 </td>
