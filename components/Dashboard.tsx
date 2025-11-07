@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import SummaryCard from './SummaryCard';
-import BudgetCard from './BudgetCard';
 import SpendingTrendChart from './SpendingTrendChart';
 import RecentTransactions from './RecentTransactions';
 import AddTransactionModal from './AddTransactionModal';
@@ -87,10 +86,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onAdd, onUpdate, on
         return transactions.filter(tx => new Date(tx.date).getFullYear() === selectedYear);
     }, [transactions, selectedYear]);
     
-    const totalSpentForSelectedYear = transactionsForSelectedYear
-        .filter(tx => tx.status === TransactionStatus.Paid)
-        .reduce((sum, tx) => sum + tx.amount, 0);
-    
     const computerSpend = transactionsForSelectedYear
         .filter(tx => tx.category === Category.Computers && tx.status === TransactionStatus.Paid)
         .reduce((sum, tx) => sum + tx.amount, 0);
@@ -106,7 +101,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onAdd, onUpdate, on
     const computerTotalPlanned = yearlyBudget[Category.Computers][selectedYear] || 0;
     const printerTotalPlanned = yearlyBudget[Category.Printers][selectedYear] || 0;
     const softwareTotalPlanned = yearlyBudget[Category.Software][selectedYear] || 0;
-    const totalBudgetForSelectedYear = computerTotalPlanned + printerTotalPlanned + softwareTotalPlanned;
 
     const { quarterlyPlannedSpend, trendChartLabels, startYear } = useMemo(() => {
         const allYears = new Set<number>();
@@ -169,7 +163,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onAdd, onUpdate, on
                 )}
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
                 <SummaryCard 
                     title="Computers" 
                     value={computerSpend} 
@@ -187,11 +181,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onAdd, onUpdate, on
                     value={softwareSpend}
                     icon={<SoftwareIcon className="w-8 h-8 text-brand-light-blue" />}
                     totalPlanned={softwareTotalPlanned}
-                />
-                <BudgetCard 
-                    totalBudget={totalBudgetForSelectedYear} 
-                    totalSpent={totalSpentForSelectedYear} 
-                    selectedYear={selectedYear}
                 />
             </div>
 

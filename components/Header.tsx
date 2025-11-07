@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Category, TransactionStatus } from '../types';
+import { Category, TransactionStatus, Transaction } from '../types';
 import { Filters } from '../App';
 
 const UserIcon: React.FC = () => (
@@ -12,6 +12,7 @@ const UserIcon: React.FC = () => (
 interface HeaderProps {
     filters: Filters;
     onFilterChange: (newFilters: Partial<Filters>) => void;
+    transactions: Transaction[];
 }
 
 const FilterInput: React.FC<{ children: React.ReactNode; label: string; htmlFor: string; }> = ({ children, label, htmlFor }) => (
@@ -21,7 +22,7 @@ const FilterInput: React.FC<{ children: React.ReactNode; label: string; htmlFor:
     </div>
 );
 
-const Header: React.FC<HeaderProps> = ({ filters, onFilterChange }) => {
+const Header: React.FC<HeaderProps> = ({ filters, onFilterChange, transactions }) => {
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         onFilterChange({ [e.target.name]: e.target.value });
@@ -36,6 +37,50 @@ const Header: React.FC<HeaderProps> = ({ filters, onFilterChange }) => {
         endDate: '',
       });
     }
+
+    const handleExportCSV = () => {
+        if (transactions.length === 0) {
+            alert("No data to export for the current filters.");
+            return;
+        }
+
+        const headers = ["ID", "Date", "Category", "Subcategory", "Vendor", "Amount", "Status"];
+        
+        const escapeCSV = (field: string | number) => {
+            const str = String(field);
+            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                return `"${str.replace(/"/g, '""')}"`;
+            }
+            return str;
+        };
+
+        const csvRows = transactions.map(tx => 
+            [
+                tx.id,
+                tx.date,
+                tx.category,
+                escapeCSV(tx.subcategory),
+                escapeCSV(tx.vendor),
+                tx.amount,
+                tx.status
+            ].join(',')
+        );
+
+        const csvContent = [headers.join(','), ...csvRows].join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        const today = new Date().toISOString().split('T')[0];
+
+        link.setAttribute("href", url);
+        link.setAttribute("download", `it_expense_export_${today}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
 
     const inputClasses = "bg-brand-medium-blue text-white text-sm rounded-md border-gray-600 focus:ring-brand-light-blue focus:border-brand-light-blue w-full px-2 py-1 h-8";
 
@@ -74,12 +119,20 @@ const Header: React.FC<HeaderProps> = ({ filters, onFilterChange }) => {
                     <FilterInput label="End Date" htmlFor="endDate">
                          <input type="date" id="endDate" name="endDate" value={filters.endDate} onChange={handleInputChange} className={inputClasses} />
                     </FilterInput>
-                     <button
-                        onClick={handleResetFilters}
-                        className="px-4 py-1 bg-brand-accent text-white text-sm font-medium rounded-md hover:bg-brand-light-blue focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-brand-dark-blue focus:ring-brand-accent h-8"
-                    >
-                        Reset
-                    </button>
+                     <div className="flex items-center space-x-2">
+                        <button
+                            onClick={handleResetFilters}
+                            className="flex-1 px-4 py-1 bg-brand-accent text-white text-sm font-medium rounded-md hover:bg-brand-light-blue focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-brand-dark-blue focus:ring-brand-accent h-8"
+                        >
+                            Reset
+                        </button>
+                        <button
+                            onClick={handleExportCSV}
+                            className="flex-1 px-4 py-1 bg-brand-green text-white text-sm font-medium rounded-md hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-brand-dark-blue focus:ring-brand-green h-8"
+                        >
+                            Export
+                        </button>
+                    </div>
                 </div>
             </div>
         </header>

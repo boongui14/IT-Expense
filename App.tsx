@@ -102,7 +102,11 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-brand-bg font-sans">
-      <Header filters={filters} onFilterChange={handleFilterChange} />
+      <Header 
+        filters={filters} 
+        onFilterChange={handleFilterChange} 
+        transactions={filteredTransactions}
+      />
       <main className="p-4 sm:p-6 lg:p-8">
         <Dashboard 
           transactions={filteredTransactions}
