@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -88,6 +87,19 @@ const App: React.FC = () => {
     setYearlyBudget(newBudget);
   };
 
+  const handleDeleteBudgetYear = (yearToDelete: number) => {
+    setYearlyBudget(currentBudget => {
+        const newBudget: YearlyBudget = JSON.parse(JSON.stringify(currentBudget)); // Deep copy
+
+        for (const category of Object.values(Category)) {
+            if (newBudget[category] && newBudget[category][yearToDelete] !== undefined) {
+                delete newBudget[category][yearToDelete];
+            }
+        }
+        return newBudget;
+    });
+  };
+
   return (
     <div className="min-h-screen bg-brand-bg font-sans">
       <Header filters={filters} onFilterChange={handleFilterChange} />
@@ -100,6 +112,7 @@ const App: React.FC = () => {
           onMarkAsPaid={handleMarkAsPaid}
           yearlyBudget={yearlyBudget}
           onUpdateYearlyBudget={handleUpdateYearlyBudget}
+          onDeleteBudgetYear={handleDeleteBudgetYear}
         />
       </main>
     </div>

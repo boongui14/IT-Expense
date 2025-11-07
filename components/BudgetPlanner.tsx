@@ -4,6 +4,7 @@ import { YearlyBudget, Category } from '../types';
 interface BudgetPlannerProps {
     yearlyBudget: YearlyBudget;
     onOpenModal: () => void;
+    onDeleteYear: (year: number) => void;
 }
 
 const formatCurrency = (num: number) => {
@@ -15,7 +16,13 @@ const formatCurrency = (num: number) => {
     }).format(num);
 };
 
-const BudgetPlanner: React.FC<BudgetPlannerProps> = ({ yearlyBudget, onOpenModal }) => {
+const TrashIcon: React.FC<{className?: string}> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+    </svg>
+);
+
+const BudgetPlanner: React.FC<BudgetPlannerProps> = ({ yearlyBudget, onOpenModal, onDeleteYear }) => {
     
     const budgetYears = React.useMemo(() => {
         const years = new Set<number>();
@@ -38,6 +45,12 @@ const BudgetPlanner: React.FC<BudgetPlannerProps> = ({ yearlyBudget, onOpenModal
         });
         return totals;
     }, [yearlyBudget, budgetYears, categories]);
+
+    const handleDeleteClick = (year: number) => {
+        if (window.confirm(`Are you sure you want to delete all budget data for ${year}? This action cannot be undone.`)) {
+            onDeleteYear(year);
+        }
+    };
 
     return (
         <div className="bg-brand-card-bg p-6 rounded-lg shadow-sm mt-6">
@@ -62,7 +75,20 @@ const BudgetPlanner: React.FC<BudgetPlannerProps> = ({ yearlyBudget, onOpenModal
                         <tr>
                             <th scope="col" className="px-6 py-3">Category</th>
                             {budgetYears.map(year => (
-                                <th key={year} scope="col" className="px-6 py-3 text-right">{year}</th>
+                                <th key={year} scope="col" className="px-6 py-3 text-right group">
+                                     <div className="flex justify-end items-center gap-2">
+                                        <span>{year}</span>
+                                        {budgetYears.length > 1 && (
+                                            <button
+                                                onClick={() => handleDeleteClick(year)}
+                                                className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                aria-label={`Delete budget for year ${year}`}
+                                            >
+                                                <TrashIcon className="h-4 w-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                </th>
                             ))}
                         </tr>
                     </thead>

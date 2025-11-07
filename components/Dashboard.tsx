@@ -36,9 +36,10 @@ interface DashboardProps {
     onMarkAsPaid: (transactionId: string) => void;
     yearlyBudget: YearlyBudget;
     onUpdateYearlyBudget: (newBudget: YearlyBudget) => void;
+    onDeleteBudgetYear: (year: number) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions, onAdd, onUpdate, onDelete, onMarkAsPaid, yearlyBudget, onUpdateYearlyBudget }) => {
+const Dashboard: React.FC<DashboardProps> = ({ transactions, onAdd, onUpdate, onDelete, onMarkAsPaid, yearlyBudget, onUpdateYearlyBudget, onDeleteBudgetYear }) => {
     const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
     const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -108,10 +109,22 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onAdd, onUpdate, on
     const totalBudgetForSelectedYear = computerTotalPlanned + printerTotalPlanned + softwareTotalPlanned;
 
     const { quarterlyPlannedSpend, trendChartLabels, startYear } = useMemo(() => {
-        if (budgetYears.length === 0) return { quarterlyPlannedSpend: [], trendChartLabels: [], startYear: new Date().getFullYear() };
+        const allYears = new Set<number>();
+        Object.values(yearlyBudget).forEach(catBudget => {
+            Object.keys(catBudget).forEach(year => allYears.add(Number(year)));
+        });
+        transactions.forEach(tx => {
+            allYears.add(new Date(tx.date).getFullYear());
+        });
+
+        if (allYears.size === 0) {
+            return { quarterlyPlannedSpend: [], trendChartLabels: [], startYear: new Date().getFullYear() };
+        }
+
+        const sortedYears = Array.from(allYears).sort((a, b) => a - b);
+        const firstYear = sortedYears[0];
+        const lastYear = sortedYears[sortedYears.length - 1];
         
-        const firstYear = budgetYears[0];
-        const lastYear = budgetYears[budgetYears.length - 1];
         const numYears = lastYear - firstYear + 1;
         const quarterlySpend: number[] = Array(numYears * 4).fill(0);
         const labels: string[] = [];
@@ -133,7 +146,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onAdd, onUpdate, on
             }
         }
         return { quarterlyPlannedSpend: quarterlySpend, trendChartLabels: labels, startYear: firstYear };
-    }, [yearlyBudget, budgetYears]);
+    }, [yearlyBudget, transactions]);
 
 
     return (
@@ -193,7 +206,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onAdd, onUpdate, on
 
             <BudgetPlanner 
               yearlyBudget={yearlyBudget} 
-              onOpenModal={() => setIsBudgetModalOpen(true)} 
+              onOpenModal={() => setIsBudgetModalOpen(true)}
+              onDeleteYear={onDeleteBudgetYear}
             />
 
             <RecentTransactions 

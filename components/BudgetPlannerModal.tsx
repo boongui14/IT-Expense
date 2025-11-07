@@ -59,15 +59,16 @@ const BudgetPlannerModal: React.FC<BudgetPlannerModalProps> = ({ isOpen, onClose
         if (!window.confirm(`Are you sure you want to delete all budget data for ${yearToDelete}? This action cannot be undone.`)) {
             return;
         }
-        
-        setBudgetData(currentBudgetData => {
-            const newBudgetData = JSON.parse(JSON.stringify(currentBudgetData));
+
+        setBudgetData(current => {
+            const newBudget = { ...current };
             for (const category of Object.values(Category)) {
-                if (newBudgetData[category] && newBudgetData[category][yearToDelete] !== undefined) {
-                    delete newBudgetData[category][yearToDelete];
+                if (newBudget[category]?.[yearToDelete] !== undefined) {
+                    const { [yearToDelete]: _, ...remainingYears } = newBudget[category];
+                    newBudget[category] = remainingYears;
                 }
             }
-            return newBudgetData;
+            return newBudget;
         });
     };
 
